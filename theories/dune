@@ -1,0 +1,6 @@
+(coq.theory
+ (name oyaku)
+ (package oyaku)
+ (synopsis "")
+ (modules Trig)
+ (theories mathcomp.ssreflect egg))

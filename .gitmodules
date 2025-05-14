@@ -1,0 +1,6 @@
+[submodule "sponge"]
+	path = submodules/sponge
+	url = https://github.com/JuliaPoo/sponge
+[submodule "egg"]
+	path = submodules/egg
+	url = https://github.com/JuliaPoo/egg

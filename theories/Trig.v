@@ -2,8 +2,11 @@ Require Import egg.Loader.
 Require Import Coq.ZArith.ZArith. (* TODO make plugin work even if ZArith is not loaded *)
 Require Import Coq.QArith.QArith. (* Add this for rational support *)
 Require Import Coq.Strings.String.
-
 Section TestStuff.
+
+    
+
+
     Context (Expr: Type)
             (Var: string -> Expr)
             (add: Expr -> Expr -> Expr)
@@ -27,9 +30,13 @@ Section TestStuff.
             (rat_neg: forall (p: Q), neg (rat_lit p) = rat_lit (- p))
             (rat_div: forall (p q: Q), q <> 0%Q -> div (rat_lit p) (rat_lit q) = rat_lit (p / q))
             (rat_zero: rat_lit 0 = zero)
+            (rat_zero_inv: zero = rat_lit 0)
             (rat_one: rat_lit 1 = one)
+            (rat_one_inv: one = rat_lit 1)
             (rat_two: rat_lit 2 = two)
+            (rat_two_inv: two = rat_lit 2)
             (add_0_l : forall x, add zero x = x)
+            (add_0_r : forall x, add x zero = x)
             (add_comm : forall a b, add a b = add b a)
             (add_to_left_assoc : forall a b c, add a (add b c) = add (add a b) c)
             (add_to_right_assoc : forall a b c, add (add a b) c = add a (add b c))
@@ -47,11 +54,17 @@ Section TestStuff.
             (mul_distr_r_inv : forall a b c, add (mul a b) (mul a c) = mul a (add b c))
             (mul_inverse : forall a, (a <> zero) -> mul a (div one a) = one)
             (mul_integral_domain : forall a b, (a <> zero) -> (b <> zero) -> (mul a b <> zero))
+            (neg_move : forall a b, mul (neg a) b = neg (mul a b))
+            (neg_move_inv : forall a b, neg (mul a b) = mul (neg a) b)
+            (neg_comm : forall a b, mul (neg a) b = mul a (neg b))
+            (neg_idem : forall a, neg (neg a) = a)
             (div_1 : forall a, (a <> zero) -> div a a = one)
             (frac_mul : forall a b c d, mul (div a b) (div c d) = div (mul a c) (mul b d))
             (frac_mul_inv : forall a b c d, div (mul a c) (mul b d) = mul (div a b) (div c d))
             (int_pow_1 : forall a, a = (int_pow a 1%Z))
+            (ing_pow_1_inv : forall a, int_pow a 1%Z = a)
             (int_pow_0 : forall a, int_pow a 0%Z = one)
+            (int_pow_0_inv : forall a, one = int_pow a 0%Z)
             (int_pow_neg : forall a n, int_pow a ((-n)%Z) = div one (int_pow a n))
             (int_pow_pos : forall a n, int_pow a n = mul (int_pow a 1%Z) (int_pow a (n - 1)%Z))
             (int_pow_1_l : forall a, int_pow one a = one)
@@ -65,12 +78,40 @@ Section TestStuff.
             (TR5 : forall a, (int_pow (sin a) 2%Z) = (add (one) (neg (int_pow (cos a) 2%Z))))
             (TR6 : forall a, (int_pow (cos a) 2%Z) = (add (one) (neg (int_pow (sin a) 2%Z))))
             (TR10a : forall a b, sin (add a b) = add (mul (sin a) (cos b)) (mul (cos a) (sin b)))
+            (TR10ainv : forall a b, add (mul (sin a) (cos b)) (mul (cos a) (sin b)) = sin (add a b))
             (TR10b : forall a b, sin (add a (neg b)) = add (mul (sin a) (cos b)) (neg (mul (cos a) (sin b))))
             (TR10c : forall a b, cos (add a b) = add (mul (cos a) (cos b)) (neg (mul (sin a) (sin b))))
             (TR10d : forall a b, cos (add a (neg b)) = add (mul (cos a) (cos b)) (mul (sin a) (sin b)))
             .
             (* (int_pow_mul : forall a n m, (mul (int_pow a m) (int_pow a n) = int_pow a (m + n)%Z)). *)
-            
+
+    Notation "x + y" := (add x y) (at level 50, left associativity).
+    Notation "x * y" := (mul x y) (at level 40, left associativity).
+    Notation "x / y" := (div x y) (at level 40, left associativity).
+    Notation "- x" := (neg x) (at level 35, right associativity).
+    Notation "x ^ z" := (int_pow x z) (at level 30, right associativity).
+    Notation "x ~" := (rat_lit x) (at level 20, left associativity).
+
+    Context (TR7 : forall a, (cos a)^2 = (rat_lit(1) + cos (rat_lit(2) * a)) / rat_lit(2))
+            (TR8a : forall a b, (sin a) * (cos b) = (rat_lit(1) / rat_lit(2)) * (sin (a + b) + sin (a + (-b))))
+            (TR8b : forall a b, (cos a) * (sin b) = (rat_lit(1) / rat_lit(2)) * (sin (a + b) + (-sin (a + (-b)))))
+            (TR8c : forall a b, (cos a) * (cos b) = (rat_lit(1) / rat_lit(2)) * (cos (a + b) + cos (a + (-b))))
+            (TR8d : forall a b, (sin a) * (sin b) = -(rat_lit(1) / rat_lit(2)) * (cos (a + b) + (-cos (a + (-b)))))
+            (TR9a : forall a b, (sin a) + (sin b) = rat_lit(2) * sin ((a + b) / rat_lit(2)) * cos ((a + (-b) / rat_lit(2))))
+            (TR9b : forall a b, (sin a) + (-sin b) = rat_lit(2) * cos ((a + b) / rat_lit(2)) * sin ((a + (-b) / rat_lit(2))))
+            (TR9c : forall a b, (cos a) + (cos b) = rat_lit(2) * cos ((a + b) / rat_lit(2)) * cos ((a + (-b) / rat_lit(2))))
+            (TR9d : forall a b, (cos a) + (-cos b) = -rat_lit(2) * sin ((a + b) / rat_lit(2)) * sin ((a + (-b) / rat_lit(2))))
+            (TR11a : forall a, sin (rat_lit(2) * a) = rat_lit(2) * sin a * cos a)
+            (TR11b : forall a, cos (rat_lit(2) * a) = (cos a)^2 + (-(sin a)^2))
+            (TR12a : forall a b, tan (a + b) = (tan a + tan b) / (rat_lit(1) + -tan a * tan b))
+            (TR12b : forall a b, tan (a + (-b)) = (tan a + (-tan b)) / (rat_lit(1) + tan a * tan b))
+            (TR13a : forall a b, (tan a) * (tan b) = rat_lit(1) + -(tan a + tan b) * (cot (a + b)))
+            (TR13b : forall a b, (cot a) * (cot b) = rat_lit(1) + (cot a + cot b) * (cot (a + b)))
+            .
+    
+
+
+    (* Define some common constants *)    
     Create HintDb trig_db.
 
     (* Addition axioms *)
@@ -94,6 +135,23 @@ Section TestStuff.
     (* Rational number axioms *)
     Hint Resolve rat_zero rat_one rat_two rat_add rat_mul rat_neg : trig_db.
 
+        Lemma trig_test_10: forall a b, add (cos (add a b)) (cos (add a (neg b))) = mul (two) (mul (cos a) (cos b)).
+    Proof.
+        intros.
+        egg_simpl_goal 3.
+    Abort.
+
+    Lemma trig_test_add_formula: (sin (rat_lit(1)) * cos (rat_lit(2))) + (cos (rat_lit(1)) * sin (rat_lit(2))) = sin (rat_lit(3)).
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+    Qed.
+
+    Lemma test_addition: (50 + 50)%Q = 100%Q.
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+    Qed.
 
     Goal forall x1 x2,
         zero = zero ->
@@ -101,16 +159,6 @@ Section TestStuff.
     Proof.
         intros.
         egg_simpl_goal 6. (* max ffn that occurs is 5 *)
-        cbv beta.
-        reflexivity.
-    Qed.
-
-    Lemma add_0_r: forall x, add x zero = x.
-    Proof.
-        intros.
-        egg_simpl_goal 3.
-        cbv beta.
-        reflexivity.
     Qed.
 
     (* Lemma mul_0_rat_lit_l: forall a, mul (rat_lit 0) a = zero.
@@ -122,26 +170,22 @@ Section TestStuff.
         cbv beta.
         reflexivity. *)
 
-    Lemma square: forall a, (mul a a) = int_pow a 2%Z.
+    Lemma square: forall a, a * a = a ^ 2.
     Proof.
         intros.
         egg_simpl_goal 5.
-        cbv beta.
-        reflexivity.
     Qed.
 
-    Lemma square_with_auto: forall a, (mul a a) = int_pow a 2%Z.
+    Lemma square_with_auto: forall a, (mul a a) = a ^ 2.
     Proof.
         intros.
         auto.
     Qed.
 
-    Lemma trig_test: forall a, add (int_pow (sin a) 2%Z) (int_pow (cos a) 2%Z) = one.
+    Lemma trig_test: forall a, (sin a)^2 + (cos a)^2 = one.
     Proof.
         intros.
         egg_simpl_goal 5.
-        cbv beta.
-        reflexivity.
     Qed.
 
     Lemma trig_test_with_auto: forall a, add (int_pow (sin a) 2%Z) (int_pow (cos a) 2%Z) = one.
@@ -150,12 +194,56 @@ Section TestStuff.
         auto.
     Qed.
 
+    Lemma binomial_test: forall a b, (a + b)^2 = a * a + rat_lit(2) * a * b + b * b.
+    Proof.
+        intros.
+        egg_simpl_goal 50.
+    Qed.
+
+    Lemma test_fail: forall a b n, a * a + a * b + b * a + b * b = n.
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+        cbv beta.
+    Abort.
+
+    Lemma test_fail_2: forall a b c n, a^2 + b^2 + c^2 + rat_lit(2) * (a * b + a * c + b * c) = n.
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+        cbv beta.
+    Abort.
+
+
+
+    (* Lemma binomial_test_1: forall a b, (a + b) * (a + b) = a * (a + b) + b * (a + b).
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+    Qed.
+
+    Lemma binomial_test_2: forall a b, a * (a + b) + b * (a + b) = a * a + a * b + a * b + b * b.
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+    Qed.
+
+    Lemma binomial_test_3: forall a b, a * a + a * b + a * b + b * b = a * a + rat_lit(2) * a * b + b * b.
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+    Qed.
+
+    Lemma binomial_test_4: forall a b, a * b + a * b = rat_lit(2) * a * b.
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+        cbv beta. *)
+
     Lemma trig_test2: forall a, add (mul (sin a) (sin a)) (mul (cos a) (cos a)) = one.
     Proof.
         intros.
         egg_simpl_goal 2.
-        cbv beta.
-        reflexivity.
     Qed.
 
     Lemma trig_test2_with_auto: forall a, add (mul (sin a) (sin a)) (mul (cos a) (cos a)) = one.
@@ -168,8 +256,6 @@ Section TestStuff.
     Proof.
         intros.
         egg_simpl_goal 2.
-        cbv beta.
-        reflexivity.
     Qed.
 
     Lemma trig_test_3_with_auto: forall a, mul (sin a) (add (sin a) (cos a)) = add (int_pow (sin a) 2%Z) (mul (sin a) (cos a)).
@@ -182,8 +268,6 @@ Section TestStuff.
     Proof.
         intros.
         egg_simpl_goal 2.
-        cbv beta.
-        reflexivity.
     Qed.
 
     Lemma trig_test_4_with_auto: forall a, add (add (int_pow (sin a) 2%Z) (mul (sin a) (cos a))) (neg (mul (sin a) (cos a))) = int_pow (sin a) 2%Z.
@@ -195,10 +279,8 @@ Section TestStuff.
     Lemma trig_test_5: forall a, add (mul (two) (int_pow (sin a) 2%Z)) (mul (two) (int_pow (cos a) 2%Z)) = two.
     Proof.
         intros.
-        (* Set Egg Misc Tracing. *)
-        (* egg_simpl_goal 1. *)
-        cbv beta.
-    Abort.
+        egg_simpl_goal 1.
+    Qed.
 
     Lemma trig_test_5_with_auto: forall a, add (mul (two) (int_pow (sin a) 2%Z)) (mul (two) (int_pow (cos a) 2%Z)) = two.
     Proof.
@@ -210,8 +292,6 @@ Section TestStuff.
     Proof.
         intros.
         egg_simpl_goal 1.
-        cbv beta.
-        reflexivity.
     Qed.
 
     Lemma trig_test_6_with_auto: forall a, add (add (mul (sin a) (add (sin a) (cos a))) (neg (mul (sin a) (cos a)))) (int_pow (cos a) 2%Z) = one.
@@ -224,8 +304,6 @@ Section TestStuff.
     Proof.
         intros.
         egg_simpl_goal 1.
-        cbv beta.
-        reflexivity.
     Qed.
 
     Lemma trig_test_7_with_auto: forall a, add (div (sin a) (cos a)) (div (cos a) (sin a)) = add (tan a) (cot a).
@@ -237,25 +315,21 @@ Section TestStuff.
     Lemma div_test_1: forall a, (a <> zero) -> div a a = one.
     Proof.
         intros.
-        egg_simpl_goal 5.
-        2:cbv beta.
+        egg_simpl_goal 1.
         auto.
-        reflexivity.
+    Qed.
 
     Lemma div_test_2: forall a b, (a <> zero) -> (b <> zero) -> div (mul a b) (mul a b) = one.
     Proof.
         intros.
         egg_simpl_goal 4; auto.
-        cbv beta.
-        reflexivity.
+    Qed.
 
     Lemma trig_test_8: forall a, (sin a <> zero) -> (cos a <> zero) -> mul (tan a) (cot a) = one.
     Proof.
         intros.
         egg_simpl_goal 5.
-        1: egg_simpl_goal 1; try cbv beta; try auto.
-        cbv beta.
-        reflexivity.
+        auto.
     Qed.
 
     Lemma trig_test_8_with_auto: forall a, (sin a <> zero) -> (cos a <> zero) -> mul (tan a) (cot a) = one.
@@ -267,12 +341,8 @@ Section TestStuff.
     Lemma trig_test_9: forall a b, add (sin (add a b)) (sin (add a (neg b))) = mul (two) (mul (sin a) (cos b)).
     Proof.
         intros.
-        egg_simpl_goal 3.
-        cbv beta.
         egg_simpl_goal 1.
-        cbv beta.
-        reflexivity.
-    Qed.
+    Abort.
 
     Lemma trig_test_9_with_auto: forall a b, add (sin (add a b)) (sin (add a (neg b))) = mul (two) (mul (sin a) (cos b)).
     Proof.
@@ -280,15 +350,26 @@ Section TestStuff.
         auto 10 with trig_db.
     Abort.
 
-    Lemma trig_test_10: forall a b, add (cos (add a b)) (cos (add a (neg b))) = mul (two) (mul (cos a) (cos b)).
+
+
+    Lemma trig_test_10_a: forall a b, cos (a + b) = ((cos a) * (cos b) + (-sin a * sin b)).
     Proof.
         intros.
-        egg_simpl_goal 3.
-        cbv beta.
-        egg_simpl_goal 1.
-        cbv beta.
-        reflexivity.
+        egg_simpl_goal 5.
     Qed.
+
+    Lemma trig_test_10_b: forall a b, cos (a + (-b)) = ((cos a) * (cos b) + (sin a * sin b)).
+    Proof.
+        intros.
+        egg_simpl_goal 5.
+    Qed.
+
+    Lemma trig_test_10_c: forall a b, (-sin a * sin b) + (sin a * sin b) = zero.
+    Proof.
+        intros.
+        egg_simpl_goal 5.
+    Qed.
+    
 
     Lemma trig_test_10_with_auto: forall a b, add (cos (add a b)) (cos (add a (neg b))) = mul (two) (mul (cos a) (cos b)).
     Proof.
@@ -300,13 +381,5 @@ Section TestStuff.
     Proof.
         intros.
         egg_simpl_goal 5.
-        cbv beta.
-        reflexivity.
     Qed.
-
-    Lemma test_addition: 100000 + 100000 = 200000.
-    Proof.
-        (* Set Egg Misc Tracing. *)
-        (* egg_simpl_goal 5. *)
-        reflexivity.
 End TestStuff.

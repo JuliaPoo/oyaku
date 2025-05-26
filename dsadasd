@@ -1,0 +1,41 @@
+(&@sin.body
+  &R:&Real.type
+  (&@GRing.add
+      (&reals_Real__to__GRing_Nmodule
+          &R:&Real.type):&GRing.Nmodule.type
+      ?x:(&Real.sort
+        &R)
+      ?y:(&Real.sort
+        &R)):(&GRing.Nmodule.sort
+    (&reals_Real__to__GRing_Nmodule
+      &R))):(&Real.sort &R)
+
+(&@sin.body
+  &R:&Real.type
+  (&@GRing.add
+      (&GRing_PzSemiRing__to__GRing_Nmodule
+          (&reals_Real__to__GRing_PzSemiRing
+              &R:&Real.type):&GRing.PzSemiRing.type):&GRing.Nmodule.type
+      (&@GRing.natmul
+          (&GRing_PzSemiRing__to__GRing_Nmodule
+              (&reals_Real__to__GRing_PzSemiRing
+                  &R:&Real.type):&GRing.PzSemiRing.type):&GRing.Nmodule.type
+          (&GRing.one
+              (&reals_Real__to__GRing_PzSemiRing
+                  &R:&Real.type):&GRing.PzSemiRing.type):(&GRing.PzSemiRing.sort
+            (&reals_Real__to__GRing_PzSemiRing
+              &R))
+          (!S
+              (!S
+                  !O:&nat):&nat):&nat):(&GRing.Nmodule.sort
+        (&GRing_PzSemiRing__to__GRing_Nmodule
+          (&reals_Real__to__GRing_PzSemiRing
+            &R)))
+      (&GRing.one
+          (&reals_Real__to__GRing_PzSemiRing
+              &R:&Real.type):&GRing.PzSemiRing.type):(&GRing.PzSemiRing.sort
+        (&reals_Real__to__GRing_PzSemiRing
+          &R))):(&GRing.Nmodule.sort
+    (&GRing_PzSemiRing__to__GRing_Nmodule
+      (&reals_Real__to__GRing_PzSemiRing
+        &R)))):(&Real.sort &R)

@@ -1,6 +1,6 @@
 Require Import egg.Loader.
-Require Import Coq.ZArith.ZArith. (* TODO make plugin work even if ZArith is not loaded *)
-Require Import Coq.QArith.QArith. (* Add this for rational support *)
+Require Import Coq.ZArith.ZArith.
+Require Import Coq.QArith.QArith.
 Require Import Coq.Strings.String.
 Section TestStuff.
 
@@ -43,11 +43,13 @@ Section TestStuff.
             (add_to_left_assoc_inv : forall a b c, add (add a b) c = add a (add b c))
             (add_to_right_assoc_inv : forall a b c, add a (add b c) = add (add a b) c)
             (add_opp : forall a, add a (neg a) = zero)
+            (add_opp_neg_one: forall a: Expr, mul (rat_lit (-1)) a = neg a)
             (add_copy : forall a, add a a = mul two a)
             (mul_1_l : forall x, mul one x = x)
             (mul_0_l : forall x, mul zero x = zero)
             (mul_comm : forall a b, mul a b = mul b a)
             (mul_to_left_assoc : forall a b c, mul a (mul b c) = mul (mul a b) c)
+            (mul_to_right_assoc : forall a b c, mul (mul a b) c = mul a (mul b c))
             (mul_distr_l : forall a b c, mul a (add b c) = add (mul a b) (mul a c))
             (mul_distr_r : forall a b c, mul (add a b) c = add (mul a c) (mul b c))
             (mul_distr_l_inv : forall a b c, add (mul a c) (mul b c) = mul (add a b) c)
@@ -60,6 +62,8 @@ Section TestStuff.
             (neg_idem : forall a, neg (neg a) = a)
             (div_1 : forall a, (a <> zero) -> div a a = one)
             (frac_mul : forall a b c d, mul (div a b) (div c d) = div (mul a c) (mul b d))
+            (frac_assoc : forall a b c, mul a (div b c) = div (mul a b) c)
+            (frac_assoc_inv : forall a b c, div (mul a b) c = mul a (div b c))
             (frac_mul_inv : forall a b c d, div (mul a c) (mul b d) = mul (div a b) (div c d))
             (int_pow_1 : forall a, a = (int_pow a 1%Z))
             (ing_pow_1_inv : forall a, int_pow a 1%Z = a)
@@ -90,7 +94,7 @@ Section TestStuff.
     Notation "x / y" := (div x y) (at level 40, left associativity).
     Notation "- x" := (neg x) (at level 35, right associativity).
     Notation "x ^ z" := (int_pow x z) (at level 30, right associativity).
-    Notation "x ~" := (rat_lit x) (at level 20, left associativity).
+    Notation "! x" := (rat_lit x) (at level 20, left associativity).
 
     Context (TR7 : forall a, (cos a)^2 = (rat_lit(1) + cos (rat_lit(2) * a)) / rat_lit(2))
             (TR8a : forall a b, (sin a) * (cos b) = (rat_lit(1) / rat_lit(2)) * (sin (a + b) + sin (a + (-b))))
@@ -135,7 +139,171 @@ Section TestStuff.
     (* Rational number axioms *)
     Hint Resolve rat_zero rat_one rat_two rat_add rat_mul rat_neg : trig_db.
 
-        Lemma trig_test_10: forall a b, add (cos (add a b)) (cos (add a (neg b))) = mul (two) (mul (cos a) (cos b)).
+    (* sympy tests *)
+    (* Lemma TR1_test_1: forall x, !2 * csc(x) + sec(x) = !1/cos(x) + !2/sin(x).
+    Proof.
+        intros.
+        egg_simpl_goal 5.
+    Qed.
+
+    Lemma TR2_test_1: forall x, tan(x) = sin(x)/cos(x).
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+    Qed.
+
+    Lemma TR2_test_2: forall x, cot(x) = cos(x)/sin(x).
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+    Qed.
+
+    Lemma TR2_test_3: forall x, tan(tan(x) + -sin(x)/cos(x)) = zero.
+    Proof.
+        intros.
+        egg_simpl_goal 5.
+    Abort.
+
+    Lemma TR2i_test_1: forall x, sin(x)/cos(x) = tan(x).
+    Proof.
+        intros.
+        egg_simpl_goal 2.
+    Qed.
+
+    Lemma TR2i_test_2: forall x y, sin(x)*sin(y)/cos(x) = tan(x)*sin(y).
+    Proof.
+        intros.
+        egg_simpl_goal 2.
+    Qed.
+
+    Lemma TR2i_test_3: forall x, !1/(sin(x)/cos(x)) = !1/tan(x).
+    Proof.
+        intros.
+        egg_simpl_goal 2.
+    Qed.
+
+    Lemma TR2i_test_4: forall x y, !1/(sin(x)*sin(y)/cos(x)) = !1/tan(x)/sin(y).
+    Proof.
+        intros.
+        egg_simpl_goal 5.
+        cbv beta.
+    Abort.
+
+    Lemma TR2i_test_5: forall x, sin(x)/!2/(cos(x) + !1) = sin(x)/(cos(x) + !1)/!2.
+    Proof.
+        intros.
+        egg_simpl_goal 2.
+        cbv beta.
+    Abort.
+
+    Lemma TR2i_test_6: forall x, sin(x)/!2/(cos(x) + !1) = tan(x/!2)/!2.
+    Proof.
+        intros.
+        egg_simpl_goal 3.
+        cbv beta.
+    Abort.
+
+    Lemma TR2i_test_7: sin(!1)/(cos(!1) + !1) = tan(!1/!2).
+    Proof.
+        egg_simpl_goal 5.
+    Abort.
+
+    Lemma TR2i_test_8: sin(!2)/(cos(!2) + !1) = tan(!1).
+    Proof.
+        egg_simpl_goal 2.
+    Abort.
+
+    Lemma TR2i_test_9: sin(!4)/(cos(!4) + !1) = tan(!2).
+    Proof.
+        egg_simpl_goal 2.
+    Abort.
+
+    Lemma TR2i_test_10: sin(!5)/(cos(!5) + !1) = tan(!5/!2).
+    Proof.
+        egg_simpl_goal 2.
+    Abort.
+
+    Lemma TR2i_test_11: (cos(!1) + !1)/sin(!1) = !1/tan(!1/!2).
+    Proof.
+        egg_simpl_goal 2.
+    Abort.
+
+    Lemma TR2i_test_12: (cos(!2) + !1)/sin(!2) = !1/tan(!1).
+    Proof.
+        egg_simpl_goal 2.
+    Abort.
+
+    Lemma TR2i_test_13: (cos(!4) + !1)/sin(!4) = !1/tan(!2).
+    Proof.
+        egg_simpl_goal 10.
+    Abort.
+
+    Lemma TR2i_test_14: (cos(!5) + !1)/sin(!5) = !1/tan(!5/!2).
+    Proof.
+        egg_simpl_goal 2.
+    Abort.
+
+    Lemma TR8c_test_1: cos(!2)*cos(!3) = cos(!5)/!2 + cos(!1)/!2.
+    Proof.
+        egg_simpl_goal 3.
+    Abort.
+
+    Lemma TR8b_test_1: cos(!2)*sin(!3) = sin(!5)/!2 + sin(!1)/!2.
+    Proof.
+        egg_simpl_goal 3.
+    Abort.
+
+    Lemma TR8d_test_1: sin(!2)*sin(!3) = -cos(!5)/!2 + cos(!1)/!2.
+    Proof.
+        egg_simpl_goal 10.
+        cbv beta.
+    Abort.
+
+    Lemma TR8d_test_2: sin(!1)*sin(!2)*sin(!3) = sin(!4)/!4 +- sin(!6)/!4 + sin(!2)/!4.
+    Proof.
+        egg_simpl_goal 4.
+    Abort.
+
+    Lemma TR8c_test_2: cos(!2)*cos(!3)*cos(!4)*cos(!5) = 
+        cos(!4)/!4 + cos(!10)/!8 + cos(!2)/!8 + cos(!8)/!8 + cos(!14)/!8 + 
+        cos(!6)/!8 + !1/!8.
+    Proof.
+        egg_simpl_goal 20.
+    Abort.
+
+    Lemma TR8c_test_3: cos(!2)*cos(!3)*cos(!4)*cos(!5)*cos(!6) = 
+        cos(!10)/!8 + cos(!4)/!8 + !3*cos(!2)/!16 + cos(!16)/!16 + cos(!8)/!8 + 
+        cos(!14)/!16 + cos(!20)/!16 + cos(!12)/!16 + !1/!16 + cos(!6)/!8.
+    Proof.
+        egg_simpl_goal 6.
+    Abort.
+
+    Lemma TR8_test_complex: (sin(pi*!3/!7))^2*(cos(pi*!3/!7))^2/(!16*sin(pi/!7)^2) = !1/!64.
+    Proof.
+        egg_simpl_goal 6.
+    Abort. *)
+
+    Lemma sin_addition_with_constants: sin (rat_lit 2) * cos (rat_lit 1) + cos (rat_lit 2) * sin (rat_lit 1) = sin (rat_lit 3).
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+    Qed.
+
+    Lemma presentation_2: forall a, (sin a <> zero) -> (cos a <> zero) -> mul (tan a) (cot a) = one.
+    Proof.
+        intros. 
+        egg_simpl_goal 2.
+        auto.
+    Qed.
+
+    Lemma test_pow: forall a, a ^ 2 = !1 -> a^3 = a.
+    Proof.
+        intros.
+        egg_simpl_goal 5.
+        cbv beta.
+
+
+    Lemma trig_test_10: forall a b, add (cos (add a b)) (cos (add a (neg b))) = mul (two) (mul (cos a) (cos b)).
     Proof.
         intros.
         egg_simpl_goal 3.
@@ -240,73 +408,73 @@ Section TestStuff.
         egg_simpl_goal 1.
         cbv beta. *)
 
-    Lemma trig_test2: forall a, add (mul (sin a) (sin a)) (mul (cos a) (cos a)) = one.
+    Lemma trig_test2: forall a, sin a * sin a + cos a * cos a = one.
     Proof.
         intros.
         egg_simpl_goal 2.
     Qed.
 
-    Lemma trig_test2_with_auto: forall a, add (mul (sin a) (sin a)) (mul (cos a) (cos a)) = one.
+    Lemma trig_test2_with_auto: forall a, sin a * sin a + cos a * cos a = one.
     Proof.
         intros.
         auto 10 with trig_db.
     Abort.
 
-    Lemma trig_test_3: forall a, mul (sin a) (add (sin a) (cos a)) = add (int_pow (sin a) 2%Z) (mul (sin a) (cos a)).
+    Lemma trig_test_3: forall a, sin a * (sin a + cos a) = sin a ^ 2 + sin a * cos a.
     Proof.
         intros.
         egg_simpl_goal 2.
     Qed.
 
-    Lemma trig_test_3_with_auto: forall a, mul (sin a) (add (sin a) (cos a)) = add (int_pow (sin a) 2%Z) (mul (sin a) (cos a)).
+    Lemma trig_test_3_with_auto: forall a, sin a * (sin a + cos a) = sin a ^ 2 + sin a * cos a.
     Proof.
         intros.
         auto 10 with trig_db.
     Abort.
 
-    Lemma trig_test_4: forall a, add (add (int_pow (sin a) 2%Z) (mul (sin a) (cos a))) (neg (mul (sin a) (cos a))) = int_pow (sin a) 2%Z.
+    Lemma trig_test_4: forall a, sin a ^ 2 + sin a * cos a +- (sin a * cos a) = sin a ^ 2.
     Proof.
         intros.
         egg_simpl_goal 2.
     Qed.
 
-    Lemma trig_test_4_with_auto: forall a, add (add (int_pow (sin a) 2%Z) (mul (sin a) (cos a))) (neg (mul (sin a) (cos a))) = int_pow (sin a) 2%Z.
+    Lemma trig_test_4_with_auto: forall a, sin a ^ 2 + sin a * cos a +- (sin a * cos a) = sin a ^ 2.
     Proof.
         intros.
         auto 10 with trig_db.
     Abort.
 
-    Lemma trig_test_5: forall a, add (mul (two) (int_pow (sin a) 2%Z)) (mul (two) (int_pow (cos a) 2%Z)) = two.
+    Lemma trig_test_5: forall a, two * sin a ^ 2 + two * cos a ^ 2 = two.
     Proof.
         intros.
         egg_simpl_goal 1.
     Qed.
 
-    Lemma trig_test_5_with_auto: forall a, add (mul (two) (int_pow (sin a) 2%Z)) (mul (two) (int_pow (cos a) 2%Z)) = two.
+    Lemma trig_test_5_with_auto: forall a, two * sin a ^ 2 + two * cos a ^ 2 = two.
     Proof.
         intros.
         auto 10 with trig_db.
     Abort.
 
-    Lemma trig_test_6: forall a, add (add (mul (sin a) (add (sin a) (cos a))) (neg (mul (sin a) (cos a)))) (int_pow (cos a) 2%Z) = one.
+    Lemma trig_test_6: forall a, sin a * (sin a + cos a) +- (sin a * cos a) + cos a ^ 2 = one.
     Proof.
         intros.
         egg_simpl_goal 1.
     Qed.
 
-    Lemma trig_test_6_with_auto: forall a, add (add (mul (sin a) (add (sin a) (cos a))) (neg (mul (sin a) (cos a)))) (int_pow (cos a) 2%Z) = one.
+    Lemma trig_test_6_with_auto: forall a, sin a * (sin a + cos a) +- (sin a * cos a) + cos a ^ 2 = one.
     Proof.
         intros.
         auto 10 with trig_db.
     Abort.
 
-    Lemma trig_test_7: forall a, add (div (sin a) (cos a)) (div (cos a) (sin a)) = add (tan a) (cot a).
+    Lemma trig_test_7: forall a, sin a / cos a + cos a / sin a = tan a + cot a.
     Proof.
         intros.
         egg_simpl_goal 1.
     Qed.
 
-    Lemma trig_test_7_with_auto: forall a, add (div (sin a) (cos a)) (div (cos a) (sin a)) = add (tan a) (cot a).
+    Lemma trig_test_7_with_auto: forall a, sin a / cos a + cos a / sin a = tan a + cot a.
     Proof.
         intros.
         auto 10 with trig_db.
@@ -319,32 +487,45 @@ Section TestStuff.
         auto.
     Qed.
 
-    Lemma div_test_2: forall a b, (a <> zero) -> (b <> zero) -> div (mul a b) (mul a b) = one.
+    Lemma div_test_2: forall a b, (a <> zero) -> (b <> zero) -> a * b / (a * b)  = one.
     Proof.
         intros.
         egg_simpl_goal 4; auto.
     Qed.
 
-    Lemma trig_test_8: forall a, (sin a <> zero) -> (cos a <> zero) -> mul (tan a) (cot a) = one.
+    Lemma trig_test_8: forall a, (sin a <> zero) -> (cos a <> zero) -> tan a * cot a = one.
     Proof.
         intros.
-        egg_simpl_goal 5.
+        egg_simpl_goal 1.
         auto.
     Qed.
 
-    Lemma trig_test_8_with_auto: forall a, (sin a <> zero) -> (cos a <> zero) -> mul (tan a) (cot a) = one.
+    Lemma trig_test_8_with_auto: forall a, (sin a <> zero) -> (cos a <> zero) -> tan a * cot a = one.
     Proof.
         intros.
         auto 10 with trig_db.
     Abort.
 
-    Lemma trig_test_9: forall a b, add (sin (add a b)) (sin (add a (neg b))) = mul (two) (mul (sin a) (cos b)).
+    Lemma trig_test_9: forall a b, sin (a + b) + sin (a + - b) = (sin a) * (cos b) + (sin a) * (cos b) + (cos a) * (sin b) + -(cos a) * (sin b).
     Proof.
         intros.
-        egg_simpl_goal 1.
-    Abort.
+        egg_simpl_goal 6.
+    Qed.
 
-    Lemma trig_test_9_with_auto: forall a b, add (sin (add a b)) (sin (add a (neg b))) = mul (two) (mul (sin a) (cos b)).
+    Lemma trig_test_9_a: forall a b, (cos a) * (sin b) + -(cos a) * (sin b) = zero.
+    Proof.
+        intros.
+        egg_simpl_goal 5.
+    Qed.
+
+    Lemma trig_test_9_b: forall a b, (sin a) * (cos b) + (sin a) * (cos b) + zero = two * (sin a * cos b).
+    Proof.
+        intros.
+        egg_simpl_goal 5.
+    Qed.
+
+
+    Lemma trig_test_9_with_auto: forall a b, sin (a + b) + sin (a + - b) = two * (sin a * cos b).
     Proof.
         intros.
         auto 10 with trig_db.
@@ -371,7 +552,7 @@ Section TestStuff.
     Qed.
     
 
-    Lemma trig_test_10_with_auto: forall a b, add (cos (add a b)) (cos (add a (neg b))) = mul (two) (mul (cos a) (cos b)).
+    Lemma trig_test_10_with_auto: forall a b, cos (a + b) + cos (a + - b) = two * (cos a * cos b).
     Proof.
         intros.
         auto 10 with trig_db.
@@ -382,4 +563,63 @@ Section TestStuff.
         intros.
         egg_simpl_goal 5.
     Qed.
+
+    Lemma trig_test_11: forall a b, (sin a) ^ 2 * (sin b) ^ 2 + (sin a) ^ 2 * (cos b) ^ 2 + (cos a) ^ 2 = rat_lit 1.
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+    Qed.
+
+    Lemma trig_test_12: forall a b c, (sin (a + b + c)) = (-sin(a)*sin(b) + cos(a)*cos(b))*sin(c) + (sin(a)*cos(b) + sin(b)*cos(a))*cos(c).
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+    Qed.
+
+    Lemma trig_test_consts: (cos(!1)*sin(!3) + sin(!1)*cos(!3) + cos(!3)) = cos(!3) + sin(!4).
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+    Qed.
+
+    Lemma trig_test_TR10i: (cos(!2)*cos(!3) + sin(!2)*(cos(!1)*sin(!2) + cos(!2)*sin(!1))) = cos(!1).
+    Proof.
+        intros.
+        egg_simpl_goal 2.
+        cbv beta.
+        egg_simpl_goal 2.
+    Qed.
+
+    Lemma tan_test: forall a, (sin a)^2  / (cos a)^2  = (tan a)^2.
+    Proof.
+        intros.
+        egg_simpl_goal 10.
+    Abort.
+
+    Lemma tan_test_1: forall a, (sin a)^2 / (cos a)^2  = (sin a / cos a) * (sin a / cos a).
+    Proof.
+        intros.
+        egg_simpl_goal 2.
+    Qed.
+
+    Lemma tan_test_2: forall a, (sin a / cos a) * (sin a / cos a) = (tan a) ^ 2.
+    Proof.
+        intros.
+        egg_simpl_goal 2.
+    Qed.
+
+    Lemma tan_test_guided: forall a, (sin a)^2 / (cos a)^2  = (tan a) ^ 2.
+    Proof.
+        intros.
+        rewrite tan_test_1.
+        rewrite tan_test_2.
+        reflexivity.
+    Qed.
+
+    Lemma square_inv_test: forall a, a ^ 2 = a * a.
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+    Qed.
+
 End TestStuff.

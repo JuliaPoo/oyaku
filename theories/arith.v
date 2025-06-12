@@ -4,89 +4,85 @@ Require Import Coq.QArith.QArith. (* Add this for rational support *)
 Require Import Coq.Strings.String.
 
 
-    Section Arith.
-    
-    Context (Expr: Type)
-            (Var: string -> Expr)
-            (add: Expr -> Expr -> Expr)
-            (mul: Expr -> Expr -> Expr)
-            (div: Expr -> Expr -> Expr)
-            (neg: Expr -> Expr)
-            (int_pow: Expr -> Z -> Expr)
-            (zero: Expr)
-            (one: Expr)
-            (two: Expr)
-            (rat_lit: Q -> Expr)
-            (rat_add: forall (p q: Q), add (rat_lit p) (rat_lit q) = rat_lit (p + q))
-            (rat_mul: forall (p q: Q), mul (rat_lit p) (rat_lit q) = rat_lit (p * q))
-            (rat_neg: forall (p: Q), neg (rat_lit p) = rat_lit (- p))
-            (rat_div: forall (p q: Q), q <> 0%Q -> div (rat_lit p) (rat_lit q) = rat_lit (p / q))
-            (rat_zero: rat_lit 0 = zero)
-            (rat_zero_inv: zero = rat_lit 0)
-            (rat_one: rat_lit 1 = one)
-            (rat_one_inv: one = rat_lit 1)
-            (rat_two: rat_lit 2 = two)
-            (rat_two_inv: two = rat_lit 2)
-            (add_0_l : forall x, add zero x = x)
-            (add_0_r : forall x, add x zero = x)
-            (add_comm : forall a b, add a b = add b a)
-            (add_to_left_assoc : forall a b c, add a (add b c) = add (add a b) c)
-            (add_to_right_assoc : forall a b c, add (add a b) c = add a (add b c))
-            (add_to_left_assoc_inv : forall a b c, add (add a b) c = add a (add b c))
-            (add_to_right_assoc_inv : forall a b c, add a (add b c) = add (add a b) c)
-            (add_opp : forall a, add a (neg a) = zero)
-            (add_copy : forall a, add a a = mul two a)
-            (mul_1_l : forall x, mul one x = x)
-            (mul_0_l : forall x, mul zero x = zero)
-            (mul_comm : forall a b, mul a b = mul b a)
-            (mul_to_left_assoc : forall a b c, mul a (mul b c) = mul (mul a b) c)
-            (mul_distr_l : forall a b c, mul a (add b c) = add (mul a b) (mul a c))
-            (mul_distr_r : forall a b c, mul (add a b) c = add (mul a c) (mul b c))
-            (mul_distr_l_inv : forall a b c, add (mul a c) (mul b c) = mul (add a b) c)
-            (mul_distr_r_inv : forall a b c, add (mul a b) (mul a c) = mul a (add b c))
-            (mul_inverse : forall a, (a <> zero) -> mul a (div one a) = one)
-            (mul_integral_domain : forall a b, (a <> zero) -> (b <> zero) -> (mul a b <> zero))
-            (neg_move : forall a b, mul (neg a) b = neg (mul a b))
-            (neg_move_inv : forall a b, neg (mul a b) = mul (neg a) b)
-            (neg_comm : forall a b, mul (neg a) b = mul a (neg b))
-            (neg_idem : forall a, neg (neg a) = a)
-            (div_1 : forall a, (a <> zero) -> div a a = one)
-            (frac_mul : forall a b c d, mul (div a b) (div c d) = div (mul a c) (mul b d))
-            (frac_mul_inv : forall a b c d, div (mul a c) (mul b d) = mul (div a b) (div c d))
-            (int_pow_1 : forall a, a = (int_pow a 1%Z))
-            (ing_pow_1_inv : forall a, int_pow a 1%Z = a)
-            (int_pow_0 : forall a, int_pow a 0%Z = one)
-            (int_pow_0_inv : forall a, one = int_pow a 0%Z)
-            (int_pow_neg : forall a n, int_pow a ((-n)%Z) = div one (int_pow a n))
-            (int_pow_pos : forall a n, int_pow a n = mul (int_pow a 1%Z) (int_pow a (n - 1)%Z))
-            (int_pow_1_l : forall a, int_pow one a = one)
-            (int_pow_0_l : forall a, int_pow zero a = zero)
-            (int_pow_a_a : forall a, (mul a a) = int_pow a 2%Z)
-            .
-            (* (int_pow_mul : forall a n m, (mul (int_pow a m) (int_pow a n) = int_pow a (m + n)%Z)). *)
+Section Arith.
 
-    Notation "x + y" := (add x y) (at level 50, left associativity).
-    Notation "x * y" := (mul x y) (at level 40, left associativity).
-    Notation "x / y" := (div x y) (at level 40, left associativity).
-    Notation "- x" := (neg x) (at level 35, right associativity).
-    Notation "x ^ z" := (int_pow x z) (at level 30, right associativity).
-    Notation "x ~" := (rat_lit x) (at level 20, left associativity).
+    (* Ltac intro_stuff :=
+        assert (1 + 1 = 2) by reflexivity.
+        assert (comm_add : forall (a b: Q), a + b = b + a) by admit.
+        assert (comm_mult : forall (a b: Q), a * b = b * a) by admit.
+        assert (distr_r : forall (a b c: Q), a * (b + c) = a * b + a * c) by admit.
+        assert (distr_l : forall (a b c: Q), (b + c) * a = b * a + c * a) by admit.
+        assert (distr_r_inv : forall (a b c: Q), a * b + a * c = a * (b + c)) by admit.
+        assert (distr_l_inv : forall (a b c: Q), b * a + c * a = (b + c) * a) by admit.
+        assert (mult_1_r : forall (a : Q), 1 * a = a) by admit.
+        assert (assoc_add : forall (a b c: Q), (a + b) + c = a + (b + c)) by admit.
+        assert (assoc_mult : forall (a b c: Q), (a * b) * c = a * (b * c)) by admit.
+        assert (pow_intro : forall (a : Q), a * a = a^2) by admit.
+        assert (pow_intro_inv : forall (a : Q), a ^ 2 = a * a) by admit. *)
+
+     Context (one_plus_one_eq_two : (1 + 1 = 2)%Q)
+            (comm_add : forall (a b: Q), (a + b)%Q = (b + a)%Q)
+            (comm_mult : forall (a b: Q), (a * b)%Q = (b * a)%Q)
+            (distr_r : forall (a b c: Q), (a * (b + c)%Q)%Q = (a * b)%Q + (a * c)%Q)
+            (distr_l : forall (a b c: Q), ((b + c)%Q * a)%Q = (b * a)%Q + (c * a)%Q)
+            (distr_r_inv : forall (a b c: Q), ((a * b)%Q + (a * c)%Q)%Q = (a * (b + c)%Q)%Q)
+            (distr_l_inv : forall (a b c: Q), ((b * a)%Q + (c * a)%Q)%Q = ((b + c)%Q * a)%Q)
+            (mult_1_r : forall (a : Q), (1 * a)%Q = a)
+            (assoc_add : forall (a b c: Q), ((a + b)%Q + c)%Q = (a + (b + c)%Q)%Q)
+            (assoc_mult : forall (a b c: Q), ((a * b)%Q * c)%Q = (a * (b * c)%Q)%Q)
+            (pow_intro : forall (a : Q), (a * a)%Q = (a ^ 2)%Q)
+            (pow_intro_inv : forall (a : Q), (a ^ 2)%Q = (a * a)%Q).
 
 
-
-    Lemma test_addition: (50 + 50)%Q = 100%Q.
+    Lemma test_addition: 50 + 50 = 100.
     Proof.
         intros.
         egg_simpl_goal 1.
     Qed.
 
-    Goal forall x1 x2,
+    Lemma presentation_1: ((5 - 2) * (4 - (1 * 2))) = 6.
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+    Qed.
+
+    Lemma presentation_2: 
+        forall f, (forall x y a b, a * f x + b * f y = f (a * x + b * y))
+        -> 2 * f 3 + 4 * f 5 = f 26.
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+    Qed.
+
+
+    Lemma presentation_3: forall w x y z k, x * y + x * z + w * y + w * z + k = (x + w) * (y + z) + k.
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+    Qed.
+
+    Lemma binomial_test: forall a b n, a ^ 2 + a * b  + b * a + b ^ 2 = n.
+    Proof.
+        intros.
+        egg_simpl_goal 6.
+        cbv beta.
+    Abort.
+
+    Lemma comm_test: forall a b c d, a + b + c + d + -a + -b + -c + -d = 0.
+    Proof.
+        intros.
+
+
+
+
+
+    (* Goal forall x1 x2,
         zero = zero ->
         add x2 (neg x1) = add (add x1 (add x2 (neg x1))) (neg x1).
     Proof.
         intros.
         egg_simpl_goal 6. (* max ffn that occurs is 5 *)
-    Qed.
+    Qed. *)
 
     (* Lemma mul_0_rat_lit_l: forall a, mul (rat_lit 0) a = zero.
     Proof.
@@ -125,6 +121,12 @@ Require Import Coq.Strings.String.
     Proof.
         intros.
         egg_simpl_goal 1.
+    Qed.
+
+    Lemma constant_fold_test_3: ((5 - 2)%Q * (4 - (1 * 2)))%Q= 6%Q.
+    Proof.
+        intros.
+        egg_simpl_goal 10.
     Qed.
 
     Lemma hard_1: forall a b c d, a * b + a * c + d * b + d * c = (a + d) * (b + c).
@@ -181,3 +183,28 @@ Require Import Coq.Strings.String.
         intros.
         egg_simpl_goal 50.
     Qed.
+
+    Lemma egg_sucks_test_1: forall a, a + (-a) = zero.
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+    Qed.
+
+    Lemma egg_sucks_test_2: forall a b, a + b + (-b) + (-a) = zero.
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+    Qed.
+
+    Lemma egg_sucks_test_3: forall a b c, a + (-a) + b + (-b) + c + (-c) = zero.
+    Proof.
+        intros.
+        egg_simpl_goal 1.
+    Qed.
+
+    Lemma egg_sucks_test_4: forall a b c, a + b + c + (-c) + (-b) + (-a) = zero.
+    Proof.
+        intros.
+        egg_simpl_goal 20.
+    Abort.
+    
